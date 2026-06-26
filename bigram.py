@@ -11,15 +11,17 @@ from common import (
     load_text, build_vocab, encode,
     NextTokenDataset, train_one_epoch, estimate_loss, sample_model,
 )
+from config import ModelConfig, TrainConfig
 
 # ---------------------------------------------------------------------------
 # Hyperparameters
 # ---------------------------------------------------------------------------
-batch_size = 32        # 병렬 처리할 독립 시퀀스 수
-block_size = 8         # 최대 컨텍스트 길이
-max_epochs = 5         # 학습 에포크 수
-learning_rate = 1e-2
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
+model_config = ModelConfig(block_size=8)
+train_config = TrainConfig(
+    batch_size=32,
+    epochs=5,
+    learning_rate=1e-2
+    )
 # ---------------------------------------------------------------------------
 
 torch.manual_seed(1337)
@@ -57,29 +59,48 @@ if __name__ == '__main__':
     
     chars, stoi, itos, vocab_size = build_vocab(text)
 
+    model_config.vocab_size = vocab_size
     data = torch.tensor(encode(text, stoi), dtype=torch.long)
     n = int(0.9 * len(data))
     train_data = data[:n]
     val_data = data[n:]
 
-    train_dataset = NextTokenDataset(train_data, block_size)
-    val_dataset = NextTokenDataset(val_data, block_size)
+    train_dataset = NextTokenDataset(train_data, model_config.block_size)
+    val_dataset = NextTokenDataset(val_data, model_config.block_size)
 
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+    train_loader = DataLoader(train_dataset, batch_size=train_config.batch_size, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=train_config.batch_size, shuffle=False)
 
-    model = BigramLanguageModel(vocab_size)
-    m = model.to(device)
+    model = BigramLanguageModel(model_config.vocab_size)
+    m = model.to(train_config.device)
 
     # create a PyTorch optimizer
-    optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=train_config.learning_rate)
 
     print("Training Bigram Model...")
-    for epoch in range(max_epochs):
-        train_loss = train_one_epoch(m, train_loader, optimizer, device, max_steps=600)
-        val_loss = estimate_loss(m, val_loader, device, eval_iters=200)
+    for epoch in range(train_config.epochs):
+        train_loss = train_one_epoch(
+            m,
+            train_loader,
+            optimizer,
+            train_config.device,
+            max_steps=train_config.max_steps,
+        )
+        val_loss = estimate_loss(
+            m,
+            val_loader,
+            train_config.device,
+            eval_iters=train_config.eval_iters,
+        )
         print(f"epoch {epoch}: train loss {train_loss:.4f}, val loss {val_loss:.4f}")
 
     print("\n--- Sample generation ---")
-    print(sample_model(m, block_size, stoi, itos, device,
-                       start_text="\n", max_new_tokens=500))
+    print(sample_model(
+        m,
+        model_config.block_size,
+        stoi,
+        itos,
+        train_config.device,
+        start_text=train_config.sample_start_text,
+        max_new_tokens=train_config.sample_max_new_tokens,
+    ))

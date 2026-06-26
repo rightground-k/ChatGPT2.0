@@ -16,10 +16,14 @@ class ModelConfig:
 class TrainConfig:
     """학습 관련 하이퍼파라미터"""
     batch_size: int = 64
+    epochs: int = 5          # 학습 에포크 수
     max_iters: int = 2000   # 총 학습 스텝 수
+    max_steps: int = 600    # 에포크 당 최대 스텝 수
     eval_interval: int = 200
     eval_iters: int = 100
     learning_rate: float = 3e-4
     max_grad_norm: float = 1.0
     device: str = 'cuda' if torch.cuda.is_available() else 'cpu'
     mixed_precision: bool = True # AMP 사용 여부
+    sample_start_text: str = '\n'
+    sample_max_new_tokens: int = 500

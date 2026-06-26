@@ -1,9 +1,3 @@
-# Dataset
-input.txt
-
 # Python
 __pycache__/
 *.pyc
-
-# Checkpoints
-checkpoints/
